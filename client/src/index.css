@@ -1,0 +1,17 @@
+.container {
+  position: relative;
+  height: 100vh;
+}
+
+.centered-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.attribute-button:disabled {
+  /* Remove background color styling for disabled state */
+  background-color: transparent;
+  cursor: not-allowed;
+}
