@@ -3,6 +3,8 @@ import { players } from "./constants/ipl.js";
 import { shuffleDeck } from "./utils/shuffleDeck.js";
 import { reassignCards } from "./utils/reassignCards.js";
 import { decideWinner } from "./utils/decideWinner.js";
+import { randomCodeGenerator } from "./utils/randomCodeGenerator.js";
+import { addUser, removeUser, getUser, getUsersInRoom } from "./users.js";
 
 const io = new Server({
   cors: {
@@ -10,88 +12,139 @@ const io = new Server({
   },
 });
 
-let cards = shuffleDeck(players);
-let user1Cards = cards.slice(0, 5);
-let user2Cards = cards.slice(5, 10);
-
 const usersConnected = [];
+let cards;
 
 io.on("connection", (socket) => {
   socket.on("init", () => {
     console.log("an user connected", socket.id);
   });
 
-  socket.on("name", (requestor) => {
-    usersConnected.push({
+  //When client joins the game, server will process the payload sent my client and send back the payload to client
+  socket.on("joinGame", ({ requestor, numberOfCards, roomCode }) => {
+    const numberOfUsersInRoom = getUsersInRoom(roomCode).length;
+
+    console.log("before join", getUsersInRoom(roomCode));
+    if (numberOfUsersInRoom === 0) {
+      cards = shuffleDeck(players);
+    }
+    const { error, newUser } = addUser({
+      id: socket.id,
       name: requestor,
-      socketId: socket.id,
+      cards: shuffleDeck(players),
+      room: roomCode ? roomCode : randomCodeGenerator(6),
+      myCards: cards.splice(0, numberOfCards),
     });
-    console.log(usersConnected);
-    const currentUser = usersConnected[usersConnected.length - 1];
-    io.to(currentUser.socketId).emit("name", currentUser.name);
+    if (error) {
+      return callback(error);
+    }
+
+    socket.join(newUser.room);
+
+    if (getUsersInRoom(newUser.room).length === 1) {
+      //only when first user joined
+      let start = false;
+      roomCode = newUser.room;
+      io.to(newUser.id).emit("joinGame", {
+        requestor,
+        numberOfCards,
+        roomCode,
+        start,
+      });
+    } else {
+      // when both users joined
+      let start = true;
+      //To first user
+      let firstUser = getUsersInRoom(roomCode)[0];
+      let firstUserName = getUsersInRoom(roomCode)[0].name;
+      console.log(firstUserName);
+      io.to(firstUser.id).emit("joinGame", {
+        requestor: firstUserName,
+        numberOfCards,
+        roomCode,
+        start,
+      });
+      //To second user
+      io.to(newUser.id).emit("joinGame", {
+        requestor,
+        numberOfCards,
+        roomCode,
+        start,
+      });
+    }
+    console.log("after join", newUser.room, getUsersInRoom(newUser.room));
   });
+
+  //When client starts the game or click next round
 
   socket.on("myCards", (gameState) => {
     console.log(gameState.userName, "requested to show his cards");
+    const requestor = getUser(socket.id);
+    // console.log("requestor details", requestor);
 
-    const firstUser = usersConnected[0];
-    const secondUser = usersConnected[1];
+    const firstUser = getUsersInRoom(requestor.room)[0];
+    const secondUser = getUsersInRoom(requestor.room)[1];
     let prevRoundWinner;
-    if (gameState.userName === usersConnected[0].name) {
+    if (gameState.userName === firstUser.name) {
       prevRoundWinner = "user1";
     } else {
       prevRoundWinner = "user2";
     }
+    console.log(gameState.userName, firstUser.name, prevRoundWinner);
 
-    if (user1Cards.length === 0 || user2Cards.length === 0) {
-      io.emit("myCards", {
+    if (firstUser.myCards.length === 0 || secondUser.myCards.length === 0) {
+      io.in(requestor.room).emit("myCards", {
         ...gameState,
         gameOver: true,
         winner:
-          user1Cards.length === 0
-            ? usersConnected[1].name
-            : usersConnected[0].name,
+          firstUser.myCards.length === 0 ? secondUser.name : firstUser.name,
       });
       cards = shuffleDeck(players);
-      user1Cards = cards.slice(0, 5);
-      user2Cards = cards.slice(5, 10);
+      firstUser.myCards = cards.slice(0, 5);
+      secondUser.myCards = cards.slice(5, 10);
     } else {
-      io.to(firstUser.socketId).emit("myCards", {
+      io.to(firstUser.id).emit("myCards", {
         ...gameState,
-        userName: usersConnected[0].name,
-        opponentName: usersConnected[1].name,
-        myCards: user1Cards[0],
+        userName: firstUser.name,
+        opponentName: secondUser.name,
+        myCards: firstUser.myCards[0],
         opponentCards: [],
         winner: gameState.winner == null ? true : prevRoundWinner === "user1",
         currentAttribute: null,
         gameOver: gameState.gameOver,
-        myCardsLeft: user1Cards.length,
-        opponentCardsLeft: user2Cards.length,
+        myCardsLeft: firstUser.myCards.length,
+        opponentCardsLeft: secondUser.myCards.length,
       });
-      io.to(secondUser.socketId).emit("myCards", {
+      io.to(secondUser.id).emit("myCards", {
         ...gameState,
-        userName: usersConnected[1].name,
-        opponentName: usersConnected[0].name,
-        myCards: user2Cards[0],
+        userName: secondUser.name,
+        opponentName: firstUser.name,
+        myCards: secondUser.myCards[0],
         opponentCards: [],
         winner: prevRoundWinner === "user2",
         currentAttribute: null,
         gameOver: gameState.gameOver,
-        myCardsLeft: user2Cards.length,
-        opponentCardsLeft: user1Cards.length,
+        myCardsLeft: secondUser.myCards.length,
+        opponentCardsLeft: firstUser.myCards.length,
       });
     }
   });
 
+  //When client chooses an attribute
+
   socket.on("opponentCards", (gameState) => {
-    const requestor = gameState.userName;
-    console.log(gameState.userName, "requested to show opponent cards");
-    const firstUser = usersConnected[0];
-    const secondUser = usersConnected[1];
-    console.log("before reassign -> ", user1Cards.length, user2Cards.length);
+    const requestor = getUser(socket.id);
+    console.log(requestor, "requested to show opponent cards");
+    const firstUser = getUsersInRoom(requestor.room)[0];
+    const secondUser = getUsersInRoom(requestor.room)[1];
+    console.log(
+      "before reassign -> ",
+      firstUser.myCards.length,
+      secondUser.myCards.length
+    );
     const currentRoundWinner = decideWinner(
-      user1Cards[0]["Attributes"],
-      user2Cards[0]["Attributes"],
+      firstUser.myCards[0]["Attributes"],
+      secondUser.myCards[0]["Attributes"],
       gameState.currentAttribute
     );
     console.log(
@@ -102,36 +155,38 @@ io.on("connection", (socket) => {
       currentRoundWinner === "user1",
       currentRoundWinner === "user2"
     );
-    io.to(firstUser.socketId).emit("opponentCards", {
+    io.to(firstUser.id).emit("opponentCards", {
       ...gameState,
-      userName: usersConnected[0].name,
-      opponentName: usersConnected[1].name,
-      myCards: user1Cards[0],
-      opponentCards: user2Cards[0],
+      userName: firstUser.name,
+      opponentName: secondUser.name,
+      myCards: firstUser.myCards[0],
+      opponentCards: secondUser.myCards[0],
       winner: currentRoundWinner === "user1",
     });
-    io.to(secondUser.socketId).emit("opponentCards", {
+    io.to(secondUser.id).emit("opponentCards", {
       ...gameState,
-      userName: usersConnected[1].name,
-      opponentName: usersConnected[0].name,
-      myCards: user2Cards[0],
-      opponentCards: user1Cards[0],
+      userName: secondUser.name,
+      opponentName: firstUser.name,
+      myCards: secondUser.myCards[0],
+      opponentCards: firstUser.myCards[0],
       winner: currentRoundWinner === "user2",
     });
     const reassignedCards = reassignCards(
-      user1Cards,
-      user2Cards,
+      firstUser.myCards,
+      secondUser.myCards,
       currentRoundWinner
     );
-    user1Cards = reassignedCards.user1Cards;
-    user2Cards = reassignedCards.user2Cards;
-    console.log("after reassign -> ", user1Cards.length, user2Cards.length);
+    firstUser.myCards = reassignedCards.user1Cards;
+    secondUser.myCards = reassignedCards.user2Cards;
+    console.log(
+      "after reassign -> ",
+      firstUser.myCards.length,
+      secondUser.myCards.length
+    );
   });
 
   socket.on("disconnect", () => {
-    console.log("an user disconnected");
-    usersConnected.pop(1);
-    console.log(usersConnected);
+    removeUser(socket.id);
   });
 });
 

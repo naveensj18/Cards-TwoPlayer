@@ -1,0 +1,37 @@
+/* Home.css */
+.home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh; /* Set the height to fill the entire viewport */
+}
+
+.form-container {
+  margin-bottom: 20px;
+}
+
+.input-field,
+.select-field,
+.submit-button {
+  display: block; /* Change to block display */
+  width: 200px;
+  margin-bottom: 10px;
+}
+
+.submit-button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
+
+.message {
+  margin-bottom: 20px;
+}

@@ -2,12 +2,19 @@ import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
 import { Card } from "./components/Card/Card";
 import { Result } from "./components/Result/Result";
+import { Home } from "./components/Home/Home";
+import { Lobby } from "./components/Lobby/Lobby";
 
 let socket;
 function App() {
   const [inputValue, setInputValue] = useState("");
+  const [roomInput, setRoomInput] = useState("");
+  const [numberOfCardsInput, setNumberOfCardsInput] = useState(5);
   const [userName, setUsername] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const [numberOfCards, setNumberOfCards] = useState(null);
   const [disableClick, setDisableClick] = useState(false);
+  const [start, setStart] = useState(false);
   const [gameState, setGameState] = useState({
     userName: userName,
     myCards: [],
@@ -26,13 +33,37 @@ function App() {
     setInputValue(event.target.value);
   };
 
+  const handleRoomInput = (event) => {
+    setRoomInput(event.target.value);
+  };
+
+  const handleNumberOfCards = (event) => {
+    setNumberOfCardsInput(event.target.value);
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault(); // Prevents the default form submission behavior (reloading the page)
-    socket.emit("name", inputValue);
-    socket.on("name", (name) => {
-      setUsername(name);
+    socket.emit("joinGame", {
+      requestor: inputValue,
+      numberOfCards: numberOfCardsInput,
+      roomCode: roomInput,
+    });
+    socket.on("joinGame", ({ requestor, roomCode, numberOfCards, start }) => {
+      console.log(
+        "payload from server",
+        requestor,
+        roomCode,
+        numberOfCards,
+        start
+      );
+      setUsername(requestor);
+      setRoomCode(roomCode);
+      setNumberOfCards(numberOfCards);
+      setStart(start);
     });
   };
+
+  console.log(userName, roomCode, numberOfCards);
 
   //This function executes at the start of the game and on each next round click events
   //Frontend send myCards event to server. Inresponse, the gameState will be updated
@@ -79,23 +110,28 @@ function App() {
 
   return (
     <div>
-      <form onSubmit={handleSubmit}>
-        {userName === "" && (
-          <div>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleChange}
-              placeholder="Enter your name"
-            />
-            <button type="submit">Submit</button>
-          </div>
-        )}
-      </form>
-      {userName && <p>Hello, {userName}</p>}
+      {userName === "" && (
+        <Home
+          handleSubmit={handleSubmit}
+          inputValue={inputValue}
+          roomInput={roomInput}
+          handleChange={handleChange}
+          handleRoomInput={handleRoomInput}
+          handleNumberOfCards={handleNumberOfCards}
+          userName={userName}
+          roomCode={roomCode}
+          numberOfCards={numberOfCards}
+        />
+      )}
 
-      {userName !== "" && gameState.myCards.length === 0 && (
-        <button onClick={showMyCards}>Start Game</button>
+      {userName && (
+        <Lobby
+          userName={userName}
+          showMyCards={showMyCards}
+          gameState={gameState}
+          roomCode={roomCode}
+          start={start}
+        />
       )}
 
       <div className="body">

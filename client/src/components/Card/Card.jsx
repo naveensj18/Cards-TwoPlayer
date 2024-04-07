@@ -39,7 +39,7 @@ export const Card = ({
   highlight,
   clickedAttribute,
 }) => {
-  console.log(highlight, clickedAttribute);
+  console.log(data);
 
   const { Image, Name, Attributes } = data;
   const [isLoading, setIsLoading] = useState(true);
