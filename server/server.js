@@ -8,7 +8,7 @@ import { addUser, removeUser, getUser, getUsersInRoom } from "./users.js";
 
 const io = new Server({
   cors: {
-    origin: "http://localhost:5173",
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
   },
 });
 
@@ -188,4 +188,4 @@ io.on("connection", (socket) => {
   });
 });
 
-io.listen(5000);
+io.listen(process.env.PORT || 5000);
