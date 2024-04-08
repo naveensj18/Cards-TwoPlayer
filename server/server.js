@@ -9,7 +9,7 @@ import { addUser, removeUser, getUser, getUsersInRoom } from "./users.js";
 const io = new Server({
   cors: {
     // origin: "http://localhost:5173", local
-    origin: "https://card-game-qa4y.onrender.com/",
+    origin: "https://card-game-qa4y.onrender.com",
   },
 });
 
