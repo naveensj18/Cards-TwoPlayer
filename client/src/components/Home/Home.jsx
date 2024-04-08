@@ -9,7 +9,6 @@ export const Home = ({
   inputValue,
   roomInput,
   userName,
-  roomCode,
   numberOfCards,
 }) => {
   return (

@@ -6,7 +6,7 @@ export const Lobby = ({ userName, showMyCards, roomCode, start }) => {
       {!start && <p className="message">Hello, {userName}</p>}
 
       {roomCode && !start && <p> share this {roomCode} to your friend</p>}
-      {!start && (
+      {start && (
         <button onClick={showMyCards} className="submit-button">
           Start Game
         </button>

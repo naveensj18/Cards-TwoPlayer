@@ -12,8 +12,7 @@ const io = new Server({
   },
 });
 
-const usersConnected = [];
-let cards;
+let cards, n;
 
 io.on("connection", (socket) => {
   socket.on("init", () => {
@@ -24,16 +23,16 @@ io.on("connection", (socket) => {
   socket.on("joinGame", ({ requestor, numberOfCards, roomCode }) => {
     const numberOfUsersInRoom = getUsersInRoom(roomCode).length;
 
-    console.log("before join", getUsersInRoom(roomCode));
     if (numberOfUsersInRoom === 0) {
       cards = shuffleDeck(players);
+      n = numberOfCards;
     }
     const { error, newUser } = addUser({
       id: socket.id,
       name: requestor,
       cards: shuffleDeck(players),
       room: roomCode ? roomCode : randomCodeGenerator(6),
-      myCards: cards.splice(0, numberOfCards),
+      myCards: cards.splice(0, n),
     });
     if (error) {
       return callback(error);
@@ -57,7 +56,6 @@ io.on("connection", (socket) => {
       //To first user
       let firstUser = getUsersInRoom(roomCode)[0];
       let firstUserName = getUsersInRoom(roomCode)[0].name;
-      console.log(firstUserName);
       io.to(firstUser.id).emit("joinGame", {
         requestor: firstUserName,
         numberOfCards,
@@ -67,7 +65,7 @@ io.on("connection", (socket) => {
       //To second user
       io.to(newUser.id).emit("joinGame", {
         requestor,
-        numberOfCards,
+        numberOfCards: n,
         roomCode,
         start,
       });
@@ -100,8 +98,8 @@ io.on("connection", (socket) => {
           firstUser.myCards.length === 0 ? secondUser.name : firstUser.name,
       });
       cards = shuffleDeck(players);
-      firstUser.myCards = cards.slice(0, 5);
-      secondUser.myCards = cards.slice(5, 10);
+      firstUser.myCards = cards.slice(0, n);
+      secondUser.myCards = cards.slice(n, n * 2);
     } else {
       io.to(firstUser.id).emit("myCards", {
         ...gameState,
@@ -186,7 +184,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    removeUser(socket.id);
+    console.log("user disconnected");
   });
 });
 
