@@ -8,9 +8,12 @@ import { addUser, removeUser, getUser, getUsersInRoom } from "./users.js";
 
 const io = new Server({
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    // origin: "http://localhost:5173", local
+    origin: "https://card-game-qa4y.onrender.com/",
   },
 });
+
+const PORT = process.env.PORT || 5000;
 
 let cards, n;
 
@@ -188,4 +191,4 @@ io.on("connection", (socket) => {
   });
 });
 
-io.listen(process.env.PORT || 5000);
+io.listen(PORT);
