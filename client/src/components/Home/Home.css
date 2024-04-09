@@ -7,31 +7,71 @@
   height: 100vh; /* Set the height to fill the entire viewport */
 }
 
+.box-layout {
+  background-color: #f8f9fa; /* Background color for the box layout */
+  padding: 20px; /* Padding around the form container */
+  border-radius: 10px; /* Add border radius for a rounded look */
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); /* Add box shadow for depth */
+}
+
 .form-container {
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.input-label {
+  width: 180px; /* Adjust label width as needed */
+  margin-right: 10px;
+}
+
+.input-field,
+.select-field {
+  flex: 1; /* Fill remaining space */
 }
 
 .input-field,
 .select-field,
 .submit-button {
-  display: block; /* Change to block display */
-  width: 200px;
-  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.select-field {
+  border: 1px solid #ced4da; /* Add border to the select field */
+}
+
+.select-field:focus {
+  outline: none; /* Remove default focus outline */
+  border-color: #007bff; /* Change border color on focus */
 }
 
 .submit-button {
-  padding: 10px 20px;
   background-color: #007bff;
   color: #fff;
   border: none;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  width: 50%; /* Make buttons take up full width */
+}
+
+.submit-button:not(:last-child) {
+  margin-bottom: 10px; /* Add margin between buttons */
 }
 
 .submit-button:hover {
   background-color: #0056b3;
 }
 
-.message {
-  margin-bottom: 20px;
+.submit-button.disabled {
+  background-color: #ddd; /* Disabled background color */
+  color: #666; /* Text color for disabled state */
+  cursor: not-allowed; /* Cursor style for disabled state */
 }

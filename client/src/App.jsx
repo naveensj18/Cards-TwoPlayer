@@ -4,6 +4,7 @@ import { Card } from "./components/Card/Card";
 import { Result } from "./components/Result/Result";
 import { Home } from "./components/Home/Home";
 import { Lobby } from "./components/Lobby/Lobby";
+import "./App.css";
 
 let socket;
 function App() {
@@ -109,7 +110,7 @@ function App() {
   console.log(gameState);
 
   return (
-    <div>
+    <div className="app-container">
       {userName === "" && (
         <Home
           handleSubmit={handleSubmit}
@@ -124,7 +125,7 @@ function App() {
         />
       )}
 
-      {userName && (
+      {userName && gameState.myCards.length === 0 && (
         <Lobby
           userName={userName}
           showMyCards={showMyCards}
@@ -157,33 +158,32 @@ function App() {
               />
             )}
           </section>
-
-          {gameState.myCards.length !== 0 && !gameState.gameOver && (
-            <div>
-              <p className="round-results">
-                {gameState.userName} have {gameState.myCardsLeft} cards left
-              </p>
-              <p className="round-results">
-                {gameState.opponentName} have {gameState.opponentCardsLeft}{" "}
-                cards left
-              </p>
-              {gameState.winner && disableClick && (
-                <p className="round-results">You can choose the next card..</p>
-              )}
-            </div>
-          )}
-
-          <div className="next-round-container">
-            {!gameState.gameOver && disableClick && gameState.winner && (
-              <button className="next-round" onClick={showMyCards}>
-                Next Round
-              </button>
+        </div>
+        {gameState.myCards.length !== 0 && !gameState.gameOver && (
+          <div>
+            <p className="round-results">
+              {gameState.userName} have {gameState.myCardsLeft} cards left
+            </p>
+            <p className="round-results">
+              {gameState.opponentName} have {gameState.opponentCardsLeft} cards
+              left
+            </p>
+            {gameState.winner && disableClick && (
+              <p className="round-results">You can choose the next card..</p>
             )}
           </div>
-          {gameState.gameOver && (
-            <Result winner={gameState.winner} onClick={showMyCards} />
+        )}
+
+        <div className="next-round-container">
+          {!gameState.gameOver && disableClick && gameState.winner && (
+            <button className="next-round" onClick={showMyCards}>
+              Next Round
+            </button>
           )}
         </div>
+        {gameState.gameOver && (
+          <Result winner={gameState.winner} onClick={showMyCards} />
+        )}
       </div>
     </div>
   );

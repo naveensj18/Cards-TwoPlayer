@@ -1,8 +1,3 @@
-.body {
-  display: flex;
-  align-items: center;
-}
-
 .card-details {
   background-color: #f0f0f0;
   border: 1px solid #ddd;
