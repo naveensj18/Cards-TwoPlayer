@@ -27,6 +27,7 @@ function App() {
 
   useEffect(() => {
     socket = io.connect("https://nineties-cards.onrender.com");
+    // socket = io.connect("http://localhost:5000");
     socket.emit("init");
   }, []);
 

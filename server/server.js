@@ -4,18 +4,28 @@ import { shuffleDeck } from "./utils/shuffleDeck.js";
 import { reassignCards } from "./utils/reassignCards.js";
 import { decideWinner } from "./utils/decideWinner.js";
 import { randomCodeGenerator } from "./utils/randomCodeGenerator.js";
-import { addUser, removeUser, getUser, getUsersInRoom } from "./users.js";
+import {
+  addUser,
+  removeUser,
+  getUser,
+  getUsersInRoom,
+  updateCards,
+} from "./users.js";
+import { connectToDB } from "./database.js";
 
 const io = new Server({
   cors: {
-    // origin: "http://localhost:5173", local
+    // origin: "http://localhost:5173",
     origin: "https://card-game-qa4y.onrender.com",
   },
 });
 
+// server initialization
 const PORT = process.env.PORT || 5000;
 
 let cards, n;
+
+connectToDB().catch(console.dir);
 
 io.on("connection", (socket) => {
   socket.on("init", () => {
@@ -23,14 +33,16 @@ io.on("connection", (socket) => {
   });
 
   //When client joins the game, server will process the payload sent my client and send back the payload to client
-  socket.on("joinGame", ({ requestor, numberOfCards, roomCode }) => {
-    const numberOfUsersInRoom = getUsersInRoom(roomCode).length;
+  socket.on("joinGame", async ({ requestor, numberOfCards, roomCode }) => {
+    let usersInRoom = await getUsersInRoom(roomCode);
+    const numberOfUsersInRoom = usersInRoom.length;
+    console.log("number of users in room initially", usersInRoom);
 
     if (numberOfUsersInRoom === 0) {
       cards = shuffleDeck(players);
       n = numberOfCards;
     }
-    const { error, newUser } = addUser({
+    const { error, newUser } = await addUser({
       id: socket.id,
       name: requestor,
       cards: shuffleDeck(players),
@@ -42,8 +54,8 @@ io.on("connection", (socket) => {
     }
 
     socket.join(newUser.room);
-
-    if (getUsersInRoom(newUser.room).length === 1) {
+    usersInRoom = await getUsersInRoom(newUser.room);
+    if (usersInRoom.length === 1) {
       //only when first user joined
       let start = false;
       roomCode = newUser.room;
@@ -57,8 +69,10 @@ io.on("connection", (socket) => {
       // when both users joined
       let start = true;
       //To first user
-      let firstUser = getUsersInRoom(roomCode)[0];
-      let firstUserName = getUsersInRoom(roomCode)[0].name;
+      console.log(usersInRoom);
+      let firstUser = usersInRoom[0];
+      console.log("firstUser", firstUser);
+      let firstUserName = firstUser.name;
       io.to(firstUser.id).emit("joinGame", {
         requestor: firstUserName,
         numberOfCards,
@@ -73,18 +87,20 @@ io.on("connection", (socket) => {
         start,
       });
     }
-    console.log("after join", newUser.room, getUsersInRoom(newUser.room));
+    console.log("after join", newUser.room, await getUsersInRoom(newUser.room));
   });
 
   //When client starts the game or click next round
 
-  socket.on("myCards", (gameState) => {
+  socket.on("myCards", async (gameState) => {
     console.log(gameState.userName, "requested to show his cards");
-    const requestor = getUser(socket.id);
-    // console.log("requestor details", requestor);
+    const requestor = await getUser(socket.id);
 
-    const firstUser = getUsersInRoom(requestor.room)[0];
-    const secondUser = getUsersInRoom(requestor.room)[1];
+    console.log("requestor details", requestor);
+    const currentUsersInRoom = await getUsersInRoom(requestor.room);
+    console.log("currentUsersInRoom inside show my cards", currentUsersInRoom);
+    const firstUser = currentUsersInRoom[0];
+    const secondUser = currentUsersInRoom[1];
     let prevRoundWinner;
     if (gameState.userName === firstUser.name) {
       prevRoundWinner = "user1";
@@ -101,8 +117,12 @@ io.on("connection", (socket) => {
           firstUser.myCards.length === 0 ? secondUser.name : firstUser.name,
       });
       cards = shuffleDeck(players);
-      firstUser.myCards = cards.slice(0, n);
-      secondUser.myCards = cards.slice(n, n * 2);
+      await updateCards(
+        firstUser,
+        secondUser,
+        cards.slice(0, n),
+        cards.slice(n, n * 2)
+      );
     } else {
       io.to(firstUser.id).emit("myCards", {
         ...gameState,
@@ -133,11 +153,13 @@ io.on("connection", (socket) => {
 
   //When client chooses an attribute
 
-  socket.on("opponentCards", (gameState) => {
-    const requestor = getUser(socket.id);
+  socket.on("opponentCards", async (gameState) => {
+    const requestor = await getUser(socket.id);
     console.log(requestor, "requested to show opponent cards");
-    const firstUser = getUsersInRoom(requestor.room)[0];
-    const secondUser = getUsersInRoom(requestor.room)[1];
+    const currentUsersInRoom = await getUsersInRoom(requestor.room);
+    console.log("currentUsersInRoom inside show my cards", currentUsersInRoom);
+    const firstUser = currentUsersInRoom[0];
+    const secondUser = currentUsersInRoom[1];
     console.log(
       "before reassign -> ",
       firstUser.myCards.length,
@@ -177,17 +199,25 @@ io.on("connection", (socket) => {
       secondUser.myCards,
       currentRoundWinner
     );
-    firstUser.myCards = reassignedCards.user1Cards;
-    secondUser.myCards = reassignedCards.user2Cards;
-    console.log(
-      "after reassign -> ",
-      firstUser.myCards.length,
-      secondUser.myCards.length
+    // firstUser.myCards = reassignedCards.user1Cards;
+    // secondUser.myCards = reassignedCards.user2Cards;
+
+    await updateCards(
+      firstUser,
+      secondUser,
+      reassignedCards.user1Cards,
+      reassignedCards.user2Cards
     );
+    // console.log(
+    //   "after reassign -> ",
+    //   firstUser.myCards.length,
+    //   secondUser.myCards.length
+    // );
   });
 
   socket.on("disconnect", () => {
     console.log("user disconnected");
+    removeUser(socket.id);
   });
 });
 
